@@ -1,5 +1,5 @@
-import { sendResponse } from "../utils/response";
+import { sendResponse } from "../utils/response.js";
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   return sendResponse(200, "Hello world");
 };
