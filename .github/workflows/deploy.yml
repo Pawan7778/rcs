@@ -1,0 +1,40 @@
+name: RCS Deploy
+
+on:
+  push:
+    branches: [prod] # Triggers the deploy when you push to the main branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Pull the code from your repository
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # 2. Setup Node.js (matches your template Globals)
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # 3. Setup the AWS SAM CLI
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
+
+      # 4. Login to AWS using GitHub Secrets
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1 # Matches your samconfig.toml
+
+      # 5. Build the project (prepares Lambda code and layers)
+      - name: SAM Build
+        run: sam build --use-container
+
+      # 6. Deploy the project
+      # Note: Since samconfig.toml is in your repo, we don't need many flags here.
+      - name: SAM Deploy
+        run: sam deploy --no-confirm-changeset --no-fail-on-empty-changeset

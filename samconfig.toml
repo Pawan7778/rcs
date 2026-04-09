@@ -1,0 +1,20 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "rcs"
+region = "ap-south-1"
+
+# CI/CD ADJUSTMENTS:
+confirm_changeset = false       # REQUIRED: Allows GitHub to deploy without a human.
+fail_on_empty_changeset = false # PREVENTS: Deployment error if no code has changed.
+
+# S3 SETTINGS:
+resolve_s3 = true               # Let SAM manage the bucket...
+s3_prefix = "rcs"                # ...and organize files under this folder.
+
+capabilities = "CAPABILITY_IAM"
+disable_rollback = false        # RECOMMENDED: Roll back if deployment fails.
+image_repositories = []
+
+[default.global.parameters]
+region = "ap-south-1"
