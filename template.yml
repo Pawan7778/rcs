@@ -1,50 +1,70 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 
+# -----------------------------------------------------------------------
+# GLOBALS: Default settings applied to ALL functions in this template.
+# -----------------------------------------------------------------------
 Globals:
   Function:
-    Runtime: nodejs22.x
-    Timeout: 10
-    MemorySize: 128
+    Runtime: nodejs22.x # CAN CHANGE: Use nodejs18.x or nodejs20.x if needed.
+    Timeout: 10 # CAN CHANGE: Increase if your logic takes longer.
+    MemorySize: 128 # CAN CHANGE: Increase for memory-heavy tasks.
 
 Resources:
-  # STEP 1: We COMMENT OUT the API Gateway to force a "Clean Slate"
-  # RestApi:
-  #   Type: AWS::Serverless::Api
-  #   Properties:
-  #     StageName: Prod
-  #     Name: rcs_main
-  #     Cors:
-  #       AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
-  #       AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
-  #       AllowOrigin: "'*'"
+  # -----------------------------------------------------------------------
+  # API GATEWAY: This is the "Container" for your endpoints.
+  # -----------------------------------------------------------------------
+  RestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod # CAN CHANGE: e.g., 'Dev' or 'Staging'.
+      Name: rcs_main # CAN CHANGE: This is the API name shown in the Console.
+      Cors: # DONT CHANGE: These settings allow browser access.
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+        AllowOrigin: "'*'"
 
+  # -----------------------------------------------------------------------
+  # DYNAMODB: Your database table.
+  # -----------------------------------------------------------------------
   RcsTable:
     Type: AWS::Serverless::SimpleTable
     Properties:
       PrimaryKey:
-        Name: id
-        Type: String
+        Name: id # CAN CHANGE: Name of your partition key.
+        Type: String # DONT CHANGE: Must match your code's data type.
 
+  # -----------------------------------------------------------------------
+  # S3 BUCKET: Your file storage.
+  # -----------------------------------------------------------------------
   RcsBucket:
     Type: AWS::S3::Bucket
+    # DeletionPolicy: Delete # OPTIONAL: Uncomment this if you want it deleted on 'sam delete'
 
+  # -----------------------------------------------------------------------
+  # LAMBDA FUNCTION: The "Logic" of your project.
+  # -----------------------------------------------------------------------
   HelloWorldFn:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: rcs_helloWorld
-      CodeUri: src/
-      Handler: handlers/rcs_helloworld.handler
+      FunctionName: rcs_helloWorld # CAN CHANGE: The name in the Lambda console.
+      CodeUri: src/ # DONT CHANGE: Must match your folder name.
+      Handler: handlers/rcs_helloworld.handler # DONT CHANGE: Must match filename.function.
+
+      # IAM ROLE: Since you are using a manual role, keep this ARN updated.
       Role: arn:aws:iam::521769331492:role/rcs_role
+
+      # ENVIRONMENT VARIABLES: Passes Resource names into your Node.js code.
       Environment:
         Variables:
-          TABLE_NAME: !Ref RcsTable
-          BUCKET_NAME: !Ref RcsBucket
-      # STEP 1: We COMMENT OUT the Event trigger so it doesn't look for the RestApi
-      # Events:
-      #   HelloWorldApi:
-      #     Type: Api
-      #     Properties:
-      #       Path: /hello
-      #       Method: get
-      #       RestApiId: !Ref RestApi
+          TABLE_NAME: !Ref RcsTable # DONT CHANGE: Link to DynamoDB above.
+          BUCKET_NAME: !Ref RcsBucket # DONT CHANGE: Link to S3 above.
+
+      # API EVENTS: Defines the URL path and HTTP method.
+      Events:
+        HelloWorldApi:
+          Type: Api
+          Properties:
+            Path: /hello # CAN CHANGE: Your URL will be .../hello
+            Method: get # CAN CHANGE: get, post, put, etc.
+            RestApiId: !Ref RestApi # DONT CHANGE: Connects this path to 'rcs_main'.
