@@ -19,27 +19,34 @@ Resources:
     Properties:
       StageName: Prod # CAN CHANGE: e.g., 'Dev' or 'Staging'.
       Name: rcs_main # CAN CHANGE: This is the API name shown in the Console.
+      EndpointConfiguration:
+        Type: REGIONAL
+      Auth:
+        DefaultAuthorizer: RcsCustomAuthorizer
+        Authorizers:
+          RcsCustomAuthorizer:
+            FunctionPayloadType: TOKEN
+            FunctionArn: !GetAtt RcsAuthorizerFn.Arn
+            Identity:
+              Header: Authorization
       Cors: # DONT CHANGE: These settings allow browser access.
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
         AllowOrigin: "'*'"
-
   # -----------------------------------------------------------------------
   # DYNAMODB: Your database table.
   # -----------------------------------------------------------------------
-  RcsTable:
+
+
+  RcsUserTable:
     Type: AWS::Serverless::SimpleTable
     Properties:
+      TableName: rcs_user
       PrimaryKey:
-        Name: id # CAN CHANGE: Name of your partition key.
-        Type: String # DONT CHANGE: Must match your code's data type.
+        Name: username
+        Type: String
 
-  # -----------------------------------------------------------------------
-  # S3 BUCKET: Your file storage.
-  # -----------------------------------------------------------------------
-  RcsBucket:
-    Type: AWS::S3::Bucket
-    # DeletionPolicy: Delete # OPTIONAL: Uncomment this if you want it deleted on 'sam delete'
+
 
   # -----------------------------------------------------------------------
   # LAMBDA FUNCTION: The "Logic" of your project.
@@ -57,8 +64,8 @@ Resources:
       # ENVIRONMENT VARIABLES: Passes Resource names into your Node.js code.
       Environment:
         Variables:
-          TABLE_NAME: !Ref RcsTable # DONT CHANGE: Link to DynamoDB above.
-          BUCKET_NAME: !Ref RcsBucket # DONT CHANGE: Link to S3 above.
+          TABLE_NAME: RcsTable # DONT CHANGE: Link to DynamoDB above.
+          BUCKET_NAME: RcsBucket # DONT CHANGE: Link to S3 above.
 
       # API EVENTS: Defines the URL path and HTTP method.
       Events:
@@ -68,3 +75,77 @@ Resources:
             Path: /hello # CAN CHANGE: Your URL will be .../hello
             Method: get # CAN CHANGE: get, post, put, etc.
             RestApiId: !Ref RestApi # DONT CHANGE: Connects this path to 'rcs_main'.
+
+  RcsAuthorizerFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rcs_authorizer
+      CodeUri: src/
+      Handler: handlers/rcs_authorizer.handler
+      Role: arn:aws:iam::521769331492:role/rcs_role
+      Environment:
+        Variables:
+          JWT_SECRET: "zFI8KSAJ8mlenxzhxkOWmuk9bOvrJX8oouxfSDdekpG" # REPLACE in production
+
+  RcsSignupFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rcs_signup
+      CodeUri: src/
+      Handler: handlers/rcs_signup.handler
+      Role: arn:aws:iam::521769331492:role/rcs_role
+      Environment:
+        Variables:
+          USER_TABLE: !Ref RcsUserTable
+          JWT_SECRET: "zFI8KSAJ8mlenxzhxkOWmuk9bOvrJX8oouxfSDdekpG"
+      Events:
+        SignupApi:
+          Type: Api
+          Properties:
+            Path: /signup
+            Method: post
+            RestApiId: !Ref RestApi
+            Auth:
+              Authorizer: NONE
+
+  RcsUserLoginFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rcs_userLogin
+      CodeUri: src/
+      Handler: handlers/rcs_userLogin.handler
+      Role: arn:aws:iam::521769331492:role/rcs_role
+      Environment:
+        Variables:
+          USER_TABLE: !Ref RcsUserTable
+          JWT_SECRET: "zFI8KSAJ8mlenxzhxkOWmuk9bOvrJX8oouxfSDdekpG"
+      Events:
+        LoginUserApi:
+          Type: Api
+          Properties:
+            Path: /login/user
+            Method: post
+            RestApiId: !Ref RestApi
+            Auth:
+              Authorizer: NONE
+
+  RcsAdminLoginFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rcs_adminLogin
+      CodeUri: src/
+      Handler: handlers/rcs_adminLogin.handler
+      Role: arn:aws:iam::521769331492:role/rcs_role
+      Environment:
+        Variables:
+          USER_TABLE: !Ref RcsUserTable
+          JWT_SECRET: "zFI8KSAJ8mlenxzhxkOWmuk9bOvrJX8oouxfSDdekpG"
+      Events:
+        LoginAdminApi:
+          Type: Api
+          Properties:
+            Path: /login/admin
+            Method: post
+            RestApiId: !Ref RestApi
+            Auth:
+              Authorizer: NONE
