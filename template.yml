@@ -86,6 +86,7 @@ Resources:
       Environment:
         Variables:
           JWT_SECRET: "zFI8KSAJ8mlenxzhxkOWmuk9bOvrJX8oouxfSDdekpG" # REPLACE in production
+          SETUP_SECRET_KEY: "my_super_secret_setup_key_123"
 
   RcsSignupFn:
     Type: AWS::Serverless::Function
@@ -98,6 +99,7 @@ Resources:
         Variables:
           USER_TABLE: !Ref RcsUserTable
           JWT_SECRET: "zFI8KSAJ8mlenxzhxkOWmuk9bOvrJX8oouxfSDdekpG"
+          SETUP_SECRET_KEY: "my_super_secret_setup_key_123"
       Events:
         SignupApi:
           Type: Api
@@ -106,7 +108,7 @@ Resources:
             Method: post
             RestApiId: !Ref RestApi
             Auth:
-              Authorizer: NONE
+              Authorizer: RcsCustomAuthorizer
 
   RcsUserLoginFn:
     Type: AWS::Serverless::Function
@@ -149,3 +151,23 @@ Resources:
             RestApiId: !Ref RestApi
             Auth:
               Authorizer: NONE
+
+  RcsGetUserFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rcs_getUser
+      CodeUri: src/
+      Handler: handlers/rcs_getUser.handler
+      Role: arn:aws:iam::521769331492:role/rcs_role
+      Environment:
+        Variables:
+          USER_TABLE: !Ref RcsUserTable
+      Events:
+        GetUserApi:
+          Type: Api
+          Properties:
+            Path: /users
+            Method: get
+            RestApiId: !Ref RestApi
+            Auth:
+              Authorizer: RcsCustomAuthorizer
