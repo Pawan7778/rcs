@@ -37,14 +37,78 @@ Resources:
   # DYNAMODB: Your database table.
   # -----------------------------------------------------------------------
 
-
   RcsUserTable:
-    Type: AWS::Serverless::SimpleTable
+    Type: AWS::DynamoDB::Table
     Properties:
       TableName: rcs_user
-      PrimaryKey:
-        Name: username
-        Type: String
+      AttributeDefinitions:
+        - AttributeName: username
+          AttributeType: S
+        - AttributeName: userType
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+      KeySchema:
+        - AttributeName: username
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      GlobalSecondaryIndexes:
+        - IndexName: UserTypeIndex
+          KeySchema:
+            - AttributeName: userType
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
+  RcsBrandBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+            AllowedOrigins:
+              - "*"
+            MaxAge: 3000
+
+  RcsBrandBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref RcsBrandBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: 
+              - "s3:GetObject"
+            Resource: !Sub "${RcsBrandBucket.Arn}/*"
+
+  RcsBrandTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: rcs_brandManagement
+      AttributeDefinitions:
+        - AttributeName: brandName
+          AttributeType: S
+      KeySchema:
+        - AttributeName: brandName
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
 
 
 
@@ -168,6 +232,28 @@ Resources:
           Properties:
             Path: /users
             Method: get
+            RestApiId: !Ref RestApi
+            Auth:
+              Authorizer: RcsCustomAuthorizer
+
+  RcsCreateBrandFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rcs_createBrand
+      CodeUri: src/
+      Handler: handlers/rcs_createBrand.handler
+      Role: arn:aws:iam::521769331492:role/rcs_role
+      Environment:
+        Variables:
+          USER_TABLE: !Ref RcsUserTable
+          BRAND_TABLE: !Ref RcsBrandTable
+          BRAND_BUCKET: !Ref RcsBrandBucket
+      Events:
+        CreateBrandApi:
+          Type: Api
+          Properties:
+            Path: /brand
+            Method: post
             RestApiId: !Ref RestApi
             Auth:
               Authorizer: RcsCustomAuthorizer

@@ -30,7 +30,7 @@ export const handler = async (event) => {
 
     // 2. Parse payload
     const body = JSON.parse(event.body || "{}");
-    let { username, email, password, role, billingMethod, priority, status, billingCycle, expiryDate, mobileNumber, userType, themeColor, configuration } = body;
+    let { username, email, password, role, billingMethod, priority, status, billingCycle, expiryDate, mobileNumber, userType, themeColor, configuration, firstName, lastName } = body;
 
     if (!username || !email || !password || !mobileNumber) {
       return sendResponse(400, { message: "Missing required fields: username, email, password, mobileNumber" });
@@ -142,6 +142,8 @@ export const handler = async (event) => {
     const userToSave = {
         username,
         email: email.toLowerCase(),
+        firstName: firstName ? firstName.toLowerCase() : "",
+        lastName: lastName ? lastName.toLowerCase() : "",
         mobileNumber,
         password: hashedPassword,
         role: requestedRole,
