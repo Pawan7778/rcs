@@ -151,3 +151,23 @@ Resources:
             RestApiId: !Ref RestApi
             Auth:
               Authorizer: NONE
+
+  RcsGetUserFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rcs_getUser
+      CodeUri: src/
+      Handler: handlers/rcs_getUser.handler
+      Role: arn:aws:iam::521769331492:role/rcs_role
+      Environment:
+        Variables:
+          USER_TABLE: !Ref RcsUserTable
+      Events:
+        GetUserApi:
+          Type: Api
+          Properties:
+            Path: /users
+            Method: get
+            RestApiId: !Ref RestApi
+            Auth:
+              Authorizer: RcsCustomAuthorizer
