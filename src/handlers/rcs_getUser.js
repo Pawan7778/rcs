@@ -1,4 +1,4 @@
-import { ScanCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { ScanCommand, QueryCommand, GetCommand } from "@aws-sdk/lib-dynamodb";
 import ddbDocClient from "../utils/db-client.js";
 import { sendResponse } from "../utils/response.js";
 
@@ -24,14 +24,24 @@ export const handler = async (event) => {
       return sendResponse(403, { message: "Forbidden: Only admins and super-admins can view all users." });
     }
 
-    // 2. Fetch all users from the table
-    const scanParams = {
+    // 2. Determine fetch strategy based on query parameter
+    const queryParams = event.queryStringParameters || {};
+    const fetchType = queryParams.type ? queryParams.type.toLowerCase() : "";
+
+    if (fetchType !== "seller" && fetchType !== "client") {
+      return sendResponse(400, { message: "Invalid or missing query parameter. '?type' strictly must be 'seller' or 'client'." });
+    }
+
+    const queryParamsObj = {
       TableName: TABLE_NAME,
+      IndexName: "UserTypeIndex",
+      KeyConditionExpression: "userType = :userType",
+      ExpressionAttributeValues: {
+        ":userType": fetchType,
+      },
+      ScanIndexForward: false // Natively sorts backwards targeting the new 'createdAt' Sort Key!
     };
-    
-    // Note: For very large tables, ScanCommand will paginate. 
-    // This example fetches the first page of results up to 1MB.
-    const { Items } = await ddbDocClient.send(new ScanCommand(scanParams));
+    const { Items } = await ddbDocClient.send(new QueryCommand(queryParamsObj));
 
     // 3. Remove hashed passwords before returning the profiles!
     const safeUsers = (Items || []).map(user => {
