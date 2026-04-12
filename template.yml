@@ -113,6 +113,31 @@ Resources:
 
 
 
+  RcsBotTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: rcs_bot
+      AttributeDefinitions:
+        - AttributeName: botName
+          AttributeType: S
+        - AttributeName: createdAt
+          AttributeType: S
+        - AttributeName: type
+          AttributeType: S
+      KeySchema:
+        - AttributeName: botName
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      GlobalSecondaryIndexes:
+        - IndexName: BotGlobalIndex
+          KeySchema:
+            - AttributeName: type
+              KeyType: HASH
+            - AttributeName: createdAt
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
   # -----------------------------------------------------------------------
   # LAMBDA FUNCTION: The "Logic" of your project.
   # -----------------------------------------------------------------------
@@ -249,12 +274,34 @@ Resources:
           USER_TABLE: !Ref RcsUserTable
           BRAND_TABLE: !Ref RcsBrandTable
           BRAND_BUCKET: !Ref RcsBrandBucket
+          BOT_TABLE: !Ref RcsBotTable
       Events:
         CreateBrandApi:
           Type: Api
           Properties:
             Path: /brand
             Method: post
+            RestApiId: !Ref RestApi
+            Auth:
+              Authorizer: RcsCustomAuthorizer
+
+  RcsGetBrandFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rcs_getBrand
+      CodeUri: src/
+      Handler: handlers/rcs_getBrand.handler
+      Role: arn:aws:iam::521769331492:role/rcs_role
+      Environment:
+        Variables:
+          BRAND_TABLE: !Ref RcsBrandTable
+          BOT_TABLE: !Ref RcsBotTable
+      Events:
+        GetBrandApi:
+          Type: Api
+          Properties:
+            Path: /brand
+            Method: get
             RestApiId: !Ref RestApi
             Auth:
               Authorizer: RcsCustomAuthorizer
