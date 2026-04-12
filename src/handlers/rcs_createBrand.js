@@ -6,6 +6,7 @@ import { sendResponse } from "../utils/response.js";
 
 const USER_TABLE = process.env.USER_TABLE;
 const BRAND_TABLE = process.env.BRAND_TABLE;
+const BOT_TABLE = process.env.BOT_TABLE;
 const BRAND_BUCKET = process.env.BRAND_BUCKET || "default-brand-bucket";
 
 // Standard S3 client creation
@@ -27,10 +28,19 @@ export const handler = async (event) => {
 
     // 2. Parse payload
     const body = JSON.parse(event.body || "{}");
-    const { username, brandName, officialWebsiteUrl, industryType, designation } = body;
+    const { username, brandName, officialWebsiteUrl, industryType, designation, companyAddress } = body;
 
-    if (!username || !brandName || !officialWebsiteUrl || !industryType || !designation) {
-      return sendResponse(400, { message: "Missing required fields: username, brandName, officialWebsiteUrl, industryType, designation" });
+    if (!username || !brandName || !officialWebsiteUrl || !industryType || !designation || !companyAddress) {
+      return sendResponse(400, { message: "Missing required fields: username, brandName, officialWebsiteUrl, industryType, designation, companyAddress" });
+    }
+
+    // Validate sub-fields of companyAddress
+    const { 
+      AddressLine1, AddressLine2, City, State, Zip, Country 
+    } = companyAddress;
+
+    if (!AddressLine1 || !City || !State || !Zip || !Country) {
+       return sendResponse(400, { message: "Missing address details: AddressLine1, City, State, Zip, and Country are required." });
     }
 
     // 3. Check if brand already exists
@@ -62,30 +72,53 @@ export const handler = async (event) => {
 
     // 6. Assemble contact info and insert to DB
     const contactPersonDetails = {
-      firstName: targetUser.firstName || "",
-      lastName: targetUser.lastName || "",
-      designation: designation,
+      firstName: targetUser.firstName.toLowerCase() || "",
+      lastName: targetUser.lastName.toLowerCase() || "",
+      designation: designation.toLowerCase(),
       mobileNumber: targetUser.mobileNumber || "",
       email: targetUser.email || ""
     };
 
+    const createdAt = new Date().toISOString();
+
     const newBrand = {
       brandName,
-      officialWebsiteUrl,
+      officialWebsiteUrl: officialWebsiteUrl.toLowerCase(),
       brandLogoUrl,
-      industryType,
+      industryType: industryType.toLowerCase(),
+      companyAddress: {
+        AddressLine1: AddressLine1.toLowerCase(),
+        AddressLine2: AddressLine2 ? AddressLine2.toLowerCase() : "",
+        City: City.toLowerCase(),
+        State: State.toLowerCase(),
+        Zip: Zip.toLowerCase(),
+        Country: Country.toLowerCase()
+      },
       contactPersonDetails,
       linkedUser: username,
       createdBy: callerUsername,
-      createdAt: new Date().toISOString()
+      createdAt
     };
 
-    await ddbDocClient.send(new PutCommand({ TableName: BRAND_TABLE, Item: newBrand }));
+    const newBot = {
+      botName: brandName,
+      type: "BOT", // Added for global sorting GSI
+      username: username,
+      status: "inactive", // Default status for a new bot
+      createdAt
+    };
 
-    // 7. Return success with the upload URL
+    // 7. Perform Inserts
+    await ddbDocClient.send(new PutCommand({ TableName: BRAND_TABLE, Item: newBrand }));
+    await ddbDocClient.send(new PutCommand({ TableName: BOT_TABLE, Item: newBot }));
+
+    newBrand.status = newBot.status
+    
+    // 8. Return success with the upload URL
     return sendResponse(201, {
-      message: "Brand created successfully. Please use the presignedUploadUrl to upload the brand logo.",
+      message: "Brand and Bot created successfully.",
       brand: newBrand,
+      bot: newBot,
       presignedUploadUrl: presignedUrl
     });
 
