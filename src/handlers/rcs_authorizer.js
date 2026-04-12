@@ -8,13 +8,18 @@ const generatePolicy = (principalId, effect, resource) => {
   const authResponse = {};
   authResponse.principalId = principalId;
   if (effect && resource) {
+    // Replace the specific method/path with a wildcard to allow all routes
+    // resource format: arn:aws:execute-api:region:account:apiId/stage/METHOD/path
+    const resourceParts = resource.split("/");
+    const wildcardResource = resourceParts[0] + "/*/*";
+
     const policyDocument = {
       Version: "2012-10-17",
       Statement: [
         {
           Action: "execute-api:Invoke",
           Effect: effect,
-          Resource: resource,
+          Resource: wildcardResource,
         },
       ],
     };

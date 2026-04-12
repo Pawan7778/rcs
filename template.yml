@@ -29,6 +29,7 @@ Resources:
             FunctionArn: !GetAtt RcsAuthorizerFn.Arn
             Identity:
               Header: Authorization
+            AuthorizerResultTtlInSeconds: 0
       Cors: # DONT CHANGE: These settings allow browser access.
         AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
         AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
