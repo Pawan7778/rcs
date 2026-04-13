@@ -27,6 +27,7 @@ export const handler = async (event) => {
     // 2. Determine fetch strategy based on query parameter
     const queryParams = event.queryStringParameters || {};
     const fetchType = queryParams.type ? queryParams.type.toLowerCase() : "";
+    const isOnlyName = queryParams.onlyName === "true";
 
     if (fetchType !== "seller" && fetchType !== "client") {
       return sendResponse(400, { message: "Invalid or missing query parameter. '?type' strictly must be 'seller' or 'client'." });
@@ -45,6 +46,9 @@ export const handler = async (event) => {
 
     // 3. Remove hashed passwords before returning the profiles!
     const safeUsers = (Items || []).map(user => {
+      if (isOnlyName) {
+        return { username: user.username };
+      }
       const { password, ...safeUser } = user;
       return safeUser;
     });
