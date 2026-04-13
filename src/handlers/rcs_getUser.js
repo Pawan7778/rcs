@@ -26,11 +26,31 @@ export const handler = async (event) => {
 
     // 2. Determine fetch strategy based on query parameter
     const queryParams = event.queryStringParameters || {};
-    const fetchType = queryParams.type ? queryParams.type.toLowerCase() : "";
-    const isOnlyName = queryParams.onlyName === "true";
+    const { username, type, onlyName } = queryParams;
+
+    // CASE 1: Simple logic to fetch full profile based on username
+    if (username) {
+      const { Item: user } = await ddbDocClient.send(new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { username }
+      }));
+
+      if (!user) {
+        return sendResponse(404, { message: "User not found" });
+      }
+
+      const { password, ...safeUser } = user;
+      return sendResponse(200, {
+        message: "User profile retrieved successfully",
+        user: safeUser
+      });
+    }
+
+    const fetchType = type ? type.toLowerCase() : "";
+    const isOnlyName = onlyName === "true";
 
     if (fetchType !== "seller" && fetchType !== "client") {
-      return sendResponse(400, { message: "Invalid or missing query parameter. '?type' strictly must be 'seller' or 'client'." });
+      return sendResponse(400, { message: "Invalid query. Provide '?username' for profile or '?type=seller/client' for list." });
     }
 
     const queryParamsObj = {
