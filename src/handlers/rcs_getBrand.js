@@ -15,7 +15,8 @@ export const handler = async (event) => {
     }
 
     const queryParams = event.queryStringParameters || {};
-    const { brandName } = queryParams;
+    const { brandName, onlyName } = queryParams;
+    const isOnlyName = onlyName === "true";
 
     // CASE 1: Fetch specific brand details
     if (brandName) {
@@ -34,12 +35,14 @@ export const handler = async (event) => {
           Key: { botName: brandName }
       }));
 
+      const brandData = {
+        ...brand,
+        status: bot ? bot.status : "inactive"
+      };
+
       return sendResponse(200, {
         message: "Brand retrieved successfully",
-        brand: {
-          ...brand,
-          status: bot ? bot.status : "inactive"
-        }
+        brand: isOnlyName ? { brandName: brandData.brandName } : brandData
       });
     }
 
@@ -53,11 +56,16 @@ export const handler = async (event) => {
       ScanIndexForward: false // Descending order (newest first)
     }));
 
-    const brandList = (result.Items || []).map(item => ({
-      brandName: item.botName,
-      status: item.status,
-      createdAt: item.createdAt
-    }));
+    const brandList = (result.Items || []).map(item => {
+      if (isOnlyName) {
+        return { brandName: item.botName };
+      }
+      return {
+        brandName: item.botName,
+        status: item.status,
+        createdAt: item.createdAt
+      };
+    });
 
     return sendResponse(200, {
       message: "Brands list retrieved successfully",
