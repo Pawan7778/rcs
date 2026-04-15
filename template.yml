@@ -138,6 +138,31 @@ Resources:
           Projection:
             ProjectionType: ALL
 
+  RcsTemplateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: rcs_template
+      AttributeDefinitions:
+        - AttributeName: templateName
+          AttributeType: S
+        - AttributeName: botName
+          AttributeType: S
+        - AttributeName: status
+          AttributeType: S
+      KeySchema:
+        - AttributeName: templateName
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      GlobalSecondaryIndexes:
+        - IndexName: BotStatusIndex
+          KeySchema:
+            - AttributeName: botName
+              KeyType: HASH
+            - AttributeName: status
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+
   # -----------------------------------------------------------------------
   # LAMBDA FUNCTION: The "Logic" of your project.
   # -----------------------------------------------------------------------
@@ -301,6 +326,83 @@ Resources:
           Type: Api
           Properties:
             Path: /brand
+            Method: get
+            RestApiId: !Ref RestApi
+            Auth:
+              Authorizer: RcsCustomAuthorizer
+
+  RcsTemplateBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      CorsConfiguration:
+        CorsRules:
+          - AllowedHeaders:
+              - "*"
+            AllowedMethods:
+              - GET
+              - PUT
+              - POST
+            AllowedOrigins:
+              - "*"
+            MaxAge: 3000
+
+  RcsTemplateBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref RcsTemplateBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: 
+              - "s3:GetObject"
+            Resource: !Sub "${RcsTemplateBucket.Arn}/*"
+
+  RcsCreateTemplateFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rcs_createTemplate
+      CodeUri: src/
+      Handler: handlers/rcs_createTemplate.handler
+      Role: arn:aws:iam::521769331492:role/rcs_role
+      Environment:
+        Variables:
+          TEMPLATE_TABLE: !Ref RcsTemplateTable
+          TEMPLATE_BUCKET: !Ref RcsTemplateBucket
+      Events:
+        CreateTemplateApi:
+          Type: Api
+          Properties:
+            Path: /template
+            Method: post
+            RestApiId: !Ref RestApi
+            Auth:
+              Authorizer: RcsCustomAuthorizer
+
+  RcsGetTemplateFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rcs_getTemplate
+      CodeUri: src/
+      Handler: handlers/rcs_getTemplate.handler
+      Role: arn:aws:iam::521769331492:role/rcs_role
+      Environment:
+        Variables:
+          TEMPLATE_TABLE: !Ref RcsTemplateTable
+      Events:
+        GetTemplateApi:
+          Type: Api
+          Properties:
+            Path: /template
             Method: get
             RestApiId: !Ref RestApi
             Auth:
