@@ -4,6 +4,7 @@ import { sendResponse } from "../utils/response.js";
 
 const BRAND_TABLE = process.env.BRAND_TABLE;
 const BOT_TABLE = process.env.BOT_TABLE;
+const USER_TABLE = process.env.USER_TABLE;
 
 export const handler = async (event) => {
   try {
@@ -13,6 +14,10 @@ export const handler = async (event) => {
     if (!callerUsername) {
       return sendResponse(401, { message: "Unauthorized" });
     }
+
+    // 1. Fetch caller role for authorization
+    const { Item: callerRecord } = await ddbDocClient.send(new GetCommand({ TableName: USER_TABLE, Key: { username: callerUsername } }));
+    const isAdmin = callerRecord && (callerRecord.role === "admin" || callerRecord.role === "super-admin");
 
     const queryParams = event.queryStringParameters || {};
     const { brandName, onlyName } = queryParams;
@@ -46,7 +51,11 @@ export const handler = async (event) => {
       });
     }
 
-    // CASE 2: Fetch all brand names and statuses (sorted by createdAt)
+    // CASE 2: Fetch all brand names and statuses (Admin only)
+    if (!isAdmin) {
+      return sendResponse(403, { message: "Forbidden: Only admins can view the list of all brands/bots." });
+    }
+
     const result = await ddbDocClient.send(new QueryCommand({
       TableName: BOT_TABLE,
       IndexName: "BotGlobalIndex",

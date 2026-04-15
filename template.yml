@@ -321,6 +321,7 @@ Resources:
         Variables:
           BRAND_TABLE: !Ref RcsBrandTable
           BOT_TABLE: !Ref RcsBotTable
+          USER_TABLE: !Ref RcsUserTable
       Events:
         GetBrandApi:
           Type: Api
@@ -404,6 +405,27 @@ Resources:
           Properties:
             Path: /template
             Method: get
+            RestApiId: !Ref RestApi
+            Auth:
+              Authorizer: RcsCustomAuthorizer
+
+  RcsUpdateTemplateStatusFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: rcs_updateTemplateStatus
+      CodeUri: src/
+      Handler: handlers/rcs_updateTemplateStatus.handler
+      Role: arn:aws:iam::521769331492:role/rcs_role
+      Environment:
+        Variables:
+          TEMPLATE_TABLE: !Ref RcsTemplateTable
+          USER_TABLE: !Ref RcsUserTable
+      Events:
+        UpdateTemplateStatusApi:
+          Type: Api
+          Properties:
+            Path: /template/status
+            Method: put
             RestApiId: !Ref RestApi
             Auth:
               Authorizer: RcsCustomAuthorizer
