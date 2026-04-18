@@ -91,11 +91,11 @@ Resources:
     Properties:
       Bucket: !Ref RcsBrandBucket
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal: "*"
-            Action: 
+            Action:
               - "s3:GetObject"
             Resource: !Sub "${RcsBrandBucket.Arn}/*"
 
@@ -110,8 +110,6 @@ Resources:
         - AttributeName: brandName
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
-
-
 
   RcsBotTable:
     Type: AWS::DynamoDB::Table
@@ -190,6 +188,8 @@ Resources:
             Path: /hello # CAN CHANGE: Your URL will be .../hello
             Method: get # CAN CHANGE: get, post, put, etc.
             RestApiId: !Ref RestApi # DONT CHANGE: Connects this path to 'rcs_main'.
+            Auth:
+              Authorizer: NONE
 
   RcsAuthorizerFn:
     Type: AWS::Serverless::Function
@@ -360,11 +360,11 @@ Resources:
     Properties:
       Bucket: !Ref RcsTemplateBucket
       PolicyDocument:
-        Version: '2012-10-17'
+        Version: "2012-10-17"
         Statement:
           - Effect: Allow
             Principal: "*"
-            Action: 
+            Action:
               - "s3:GetObject"
             Resource: !Sub "${RcsTemplateBucket.Arn}/*"
 
